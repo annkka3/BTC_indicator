@@ -10,7 +10,7 @@
 
 ## UI → app/infrastructure/static/index.html, GET /
 
-## Тесты → tests/*, test_*.py
+## Тесты → tests/*,
 
 ## Docker → Dockerfile.api, Dockerfile.worker, docker-compose.yml
 
@@ -24,6 +24,7 @@
 
 ### Учебные материалы
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Подробное описание архитектуры проекта
+- **[DOMAIN_MODEL.md](./DOMAIN_MODEL.md)** — текстовое описание доменной модели (Bar, Metric, Timeframe, Divergence, MarketRegime и т.д.)
 - **[TUTORIAL.md](./TUTORIAL.md)** - Пошаговое учебное руководство
 - **[BUSINESS_ANALYSIS.md](./BUSINESS_ANALYSIS.md)** - Бизнес-анализ проекта (ML жизненный цикл, Lesson 01)
 - **[lesson_02_prototype/README.md](./lesson_02_prototype/README.md)** - Прототип продукта (описание продукта, ЦА, ценность, бизнес-модель, Lesson 02)
