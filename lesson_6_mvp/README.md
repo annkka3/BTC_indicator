@@ -2,6 +2,24 @@
 
 > **Учебный проект** - Телеграм-бот для криптовалютной аналитики на основе Clean Architecture
 
+## Доменная модель → DOMAIN_MODEL.md, app/domain/*
+
+## СУБД → SQLite, app/infrastructure/db.py
+
+## REST → FastAPI, app/infrastructure/rest_api.py, app/main_api.py
+
+## UI → app/infrastructure/static/index.html, GET /
+
+## Тесты → tests/*, test_*.py
+
+## Docker → Dockerfile.api, Dockerfile.worker, docker-compose.yml
+
+## Масштабирование → rabbitmq + сервис worker-forecast, docker compose --scale.
+
+## Docker → Dockerfile.api, Dockerfile.worker, docker-compose.yml
+
+## Масштабирование → rabbitmq + сервис worker-forecast, docker compose --scale.
+
 ## 📚 Документация
 
 ### Учебные материалы
