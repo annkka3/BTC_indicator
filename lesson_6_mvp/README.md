@@ -4,21 +4,178 @@
 
 ## Доменная модель → DOMAIN_MODEL.md, app/domain/*
 
+1. Доменная модель сервиса 
+
+DOMAIN_MODEL.md — текстовое описание доменной модели (Bar, Metric, Timeframe, Divergence, MarketRegime и т.д.)
+
+app/domain/models.py — типы и dataclass’ы (Metric, Timeframe, Implication, константы METRICS, TIMEFRAMES, маппинги импликаций и т.п.)
+
+app/domain/services.py, app/domain/market_regime/*, app/domain/divergence_detector.py — доменные сервисы поверх этих моделей.
+
+Плюс архитектурный контекст в ARCHITECTURE.md.
+
 ## СУБД → SQLite, app/infrastructure/db.py
+
+app/infrastructure/db.py — класс DB, создаёт и инициализирует SQLite:
+
+таблица bars (метрика, таймфрейм, ts, o,h,l,c,v),
+
+subs, user_settings,
+
+divs (дивергенции),
+
+trades (для TWAP / крупных сделок) и т.д.
+
+Путь к БД через конфиг: DATABASE_PATH из app/config.py / окружения.
+
+В Docker Compose база живёт в volume:
+
+DATABASE_PATH=/data/data.db
+
+volume dbdata монтируется в /data.
+
+Тесты:
+
+tests/test_database.py — проверка базовых операций с DB.
+
 
 ## REST → FastAPI, app/infrastructure/rest_api.py, app/main_api.py
 
+Основные файлы:
+
+app/infrastructure/rest_api.py
+
+FastAPI роуты: /api/bars, /api/bars/{metric}/{timeframe}, /api/forecasts/btc, /api/metrics/stats, /api/divergences, /api/stats и т.п.
+
+Ответы описаны через pydantic-модели: BarResponse, ForecastResponse, DivergenceResponse, MetricsStatsResponse.
+
+Функция create_rest_api_router(app: FastAPI, db: DB) навешивает все эти endpoints на приложение.
+
+app/infrastructure/webhook.py
+
+Создаёт app = FastAPI(...)
+
+Вызывает create_rest_api_router(app, _db) — REST привинчен к основному приложению.
+
+app/main_api.py — просто реэкспорт app для запуска через Uvicorn:
+from .infrastructure.webhook import app.
+
+Тесты:
+
+tests/test_rest_api.py — проверка ключевых REST маршрутов через TestClient.
+
+Swagger/Redoc у FastAPI включается автоматически — при запуске API у тебя будут /docs и /redoc.
+
 ## UI → app/infrastructure/static/index.html, GET /
+
+Фронтенд:
+
+app/infrastructure/static/index.html
+
+Адаптивный dashboard (метрики, таймфреймы, количество баров, активные дивергенции).
+
+Управляющие элементы (селекты метрики/таймфрейма/лимита).
+
+JS ходит в твой REST:
+
+/api/stats
+
+/api/forecasts/btc
+
+/api/bars/{metric}/{timeframe}
+
+/api/divergences
+
+В app/infrastructure/webhook.py:
+
+app.mount("/static", StaticFiles(...))
+
+@app.get("/") → отдаёт index.html.
+
+То есть пользователь может открыть http://localhost:8000/ и реально «потыкать» сервис.
+
+Плюс:
+
+Telegram-бот как отдельный UI-канал реализован в слоях app/presentation/*, app/usecases, и воркер (app/main_worker.py).
 
 ## Тесты → tests/*,
 
+Что есть:
+
+Папка tests/:
+
+test_database.py — операции с БД.
+
+test_domain_models.py — доменные модели/логика.
+
+test_rest_api.py — REST эндпоинты.
+
+test_report_generation.py
+
+test_market_doctor_report.py
+
+test_direct_report_generation.py
+
+test_bot_report_generation.py
+
+test_large_trades.py
+
+test_v2_generator.py
+
+test_render_report.py
+
+Настройки pytest: pytest.ini, tests/conftest.py (фикстуры временной базы, TestClient и т.д.).
+
 ## Docker → Dockerfile.api, Dockerfile.worker, docker-compose.yml
+
+Файлы:
+
+Dockerfile.api
+
+python:3.11-slim
+
+установка зависимостей из requirements.api.txt
+
+копирование app/
+
+HEALTHCHECK через HTTP /healthz
+
+запуск: uvicorn app.main_api:app ...
+
+Dockerfile.worker
+
+python:3.11-slim, MPLBACKEND=Agg для headless-графиков
+
+системные зависимости (git, curl)
+
+установка requirements.worker.txt
+
+установка tradingview-datafeed
+
+HEALTHCHECK через pgrep
+
+запуск: python -m app.main_worker
+
+docker-compose.yml:
+
+сервис api (образ alt-forecast-api:latest, порт 8000)
+
+сервис worker
+
+сервис worker-forecast
+
+сервис rabbitmq + rabbitmq-management
+
+volume dbdata для базы.
 
 ## Масштабирование → rabbitmq + сервис worker-forecast, docker compose --scale.
 
-## Docker → Dockerfile.api, Dockerfile.worker, docker-compose.yml
+В docker-compose.yml есть отдельный сервис worker-forecast:
 
-## Масштабирование → rabbitmq + сервис worker-forecast, docker compose --scale.
+использует тот же код (образ alt-forecast-worker:latest), общую БД и RabbitMQ.
+
+через RabbitMQ можно запускать несколько воркеров параллельно.
+
 
 ## 📚 Документация
 
