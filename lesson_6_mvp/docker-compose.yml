@@ -1,0 +1,126 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: alt-forecast-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-guest}
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: alt-forecast-api:latest
+    container_name: alt-forecast-api
+    environment:
+      - DATABASE_PATH=/data/data.db
+      - TZ=Europe/Berlin
+      - SECRET_WEBHOOK_TOKEN=${SECRET_WEBHOOK_TOKEN}
+      - TV_BTC_SYMBOL=${TV_BTC_SYMBOL:-BINANCE:BTCUSDT}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
+    command: uvicorn app.main_api:app --host 0.0.0.0 --port 8000 --access-log --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - dbdata:/data
+      - ./app:/app/app  # Монтируем код для hot reload
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: alt-forecast-worker:latest
+    container_name: alt-forecast-worker
+    environment:
+      - DATABASE_PATH=/data/data.db
+      - TZ=Europe/Berlin
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ADMIN_CHAT_ID=${ADMIN_CHAT_ID:-}
+      - REPORT_INTERVAL_MIN=15
+      - TV_BTC_SYMBOL=${TV_BTC_SYMBOL:-BINANCE:BTCUSDT}
+      - RELOAD_MODULE=app.main_worker
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
+      # - COINGECKO_API_KEY=${COINGECKO_API_KEY}
+    depends_on:
+      api:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - dbdata:/data
+      - ./app:/app/app  # Монтируем код для hot reload
+      # Автоматическая перезагрузка при изменении файлов через watchfiles
+    command: python -m app.utils.run_with_reload
+    restart: unless-stopped
+
+  worker-forecast:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: alt-forecast-worker:latest
+    container_name: alt-forecast-worker-forecast
+    environment:
+      - DATABASE_PATH=/data/data.db
+      - TZ=Europe/Berlin
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - dbdata:/data
+      - ./app:/app/app
+    command: python -m app.infrastructure.forecast_worker
+    restart: unless-stopped
+    deploy:
+      replicas: 2  # Можно масштабировать количество воркеров
+
+  collector_combo:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    image: alt-forecast-collector-combo:latest
+    container_name: alt-forecast-collector-combo
+    environment:
+      - DATABASE_PATH=/data/data.db
+      - TZ=Europe/Berlin
+      - TV_USER=${TV_USER:-}
+      - TV_PASS=${TV_PASS:-}
+      - TV_POLL_MIN=10
+    command: python -m app.collector_combo.run
+    volumes:
+      - dbdata:/data
+      - ./app:/app/app  # Монтируем код для hot reload
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+  rabbitmq_data:

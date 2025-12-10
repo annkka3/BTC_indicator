@@ -1,0 +1,45 @@
+# Цветовая система для зон ликвидности
+zones:
+  buy:
+    weak:
+      r: 0
+      g: 140
+      b: 255
+      alpha: 0.15
+    strong:
+      r: 0
+      g: 180
+      b: 255
+      alpha: 0.35
+  sell:
+    weak:
+      r: 255
+      g: 120
+      b: 0
+      alpha: 0.15
+    strong:
+      r: 255
+      g: 80
+      b: 0
+      alpha: 0.35
+
+# Цвета для pressure bars
+pressure:
+  buy:
+    r: 0
+    g: 180
+    b: 255
+    alpha: 0.7
+  sell:
+    r: 255
+    g: 80
+    b: 0
+    alpha: 0.7
+
+# Фон
+background: "#070B1A"
+
+
+
+
+

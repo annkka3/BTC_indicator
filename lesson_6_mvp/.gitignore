@@ -1,0 +1,238 @@
+# ============================================
+
+# PYTHON
+
+# ============================================
+
+__pycache__/
+
+*.pyc
+
+*.pyo
+
+*.pyd
+
+*.pdb
+
+*.pkl
+
+*.pickle
+
+
+
+# venv / poetry / pipenv
+
+.venv/
+
+venv/
+
+env/
+
+*.egg-info/
+
+.eggs/
+
+dist/
+
+build/
+
+
+
+# Jupyter
+
+.ipynb_checkpoints/
+
+
+
+# ============================================
+
+# PROJECT-SPECIFIC
+
+# ============================================
+
+
+
+# SQLite database (local state)
+
+data.db
+
+*.sqlite
+
+*.sqlite3
+
+
+
+# Local database volume mounts
+
+/data/
+
+dbdata/
+
+
+
+# Generated PNG reports, charts, heatmaps
+
+reports/
+
+charts/
+
+images/
+
+output/
+
+out/
+
+tmp/
+
+temp/
+
+*.png
+
+*.jpg
+
+
+
+# Forecast cache and model artifacts
+
+cache/
+
+model_cache/
+
+model_weights/
+
+*.onnx
+
+*.bin
+
+
+
+# TradingView or indicator downloaded files
+
+tv_cache/
+
+indicators_cache/
+
+
+
+# Logs
+
+logs/
+
+*.log
+
+
+
+# Backup files
+
+*.bak
+
+*.old
+
+
+
+# ============================================
+
+# FASTAPI / STATIC FILES
+
+# ============================================
+
+app/infrastructure/static/*.map
+
+app/infrastructure/static/*.tmp
+
+app/infrastructure/static/node_modules/
+
+app/infrastructure/static/.cache/
+
+
+
+# ============================================
+
+# TESTING
+
+# ============================================
+
+pytest_cache/
+
+.coverage
+
+htmlcov/
+
+
+
+# ============================================
+
+# IDE / EDITOR
+
+# ============================================
+
+# PyCharm
+
+.idea/
+
+*.iml
+
+
+
+# VSCode
+
+.vscode/
+
+
+
+# macOS system files
+
+.DS_Store
+
+.AppleDouble
+
+.LSOverride
+
+*.icloud
+
+
+
+# ============================================
+
+# DOCKER
+
+# ============================================
+
+docker-data/
+
+docker-volumes/
+
+*.pid
+
+
+
+# Prevent committing local docker-compose override files
+
+docker-compose.override.yml
+
+
+
+# ============================================
+
+# OTHER
+
+# ============================================
+
+# Environment variables
+
+.env
+
+.env.*
+
+.env.local
+
+.envrc
+
+
+
+# zip files of your bot or patches
+
+*.zip
+
+*.tar.gz
+

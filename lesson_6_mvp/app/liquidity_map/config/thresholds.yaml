@@ -1,0 +1,24 @@
+# Пороги для классификации зон и давления
+thresholds:
+  # Минимальный перцентиль объема для зоны
+  min_volume_percentile: 0.7
+  
+  # Порог силы зоны (WEAK/STRONG)
+  zone_strength_threshold: 0.5
+  
+  # Порог для определения bias (LONG/SHORT/NEUTRAL)
+  bias_threshold: 10.0  # процент
+  
+  # Время жизни зоны (дни)
+  zone_lifetime_days: 7
+  
+  # Минимальное количество баров для анализа
+  min_bars_for_analysis: 50
+  
+  # Количество баров для загрузки
+  default_n_bars: 500
+
+
+
+
+

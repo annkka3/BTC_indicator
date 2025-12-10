@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alt Forecast Bot - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        select, button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .bars-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .bars-table th,
+        .bars-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .bars-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .bars-table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .forecast-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .forecast-card h3 {
+            margin-bottom: 15px;
+        }
+        
+        .forecast-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .forecast-item {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .forecast-item label {
+            display: block;
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .forecast-item .value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .positive {
+            color: #10b981;
+        }
+        
+        .negative {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Alt Forecast Bot Dashboard</h1>
+            <p>Криптовалютная аналитика и прогнозы в реальном времени</p>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <h3>Метрики</h3>
+                <div class="value" id="metricsCount">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Таймфреймы</h3>
+                <div class="value" id="timeframesCount">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Всего баров</h3>
+                <div class="value" id="totalBars">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Активные дивергенции</h3>
+                <div class="value" id="activeDivs">-</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📊 Прогноз BTC</h2>
+            <div class="controls">
+                <select id="forecastTimeframe">
+                    <option value="1h">1 час</option>
+                    <option value="4h">4 часа</option>
+                    <option value="1d">1 день</option>
+                </select>
+                <button onclick="loadForecast()">Загрузить прогноз</button>
+            </div>
+            <div id="forecastContainer"></div>
+        </div>
+        
+        <div class="section">
+            <h2>📈 Данные баров</h2>
+            <div class="controls">
+                <select id="barMetric">
+                    <option value="BTC">BTC</option>
+                    <option value="USDT.D">USDT.D</option>
+                    <option value="BTC.D">BTC.D</option>
+                    <option value="TOTAL2">TOTAL2</option>
+                    <option value="TOTAL3">TOTAL3</option>
+                    <option value="ETHBTC">ETHBTC</option>
+                </select>
+                <select id="barTimeframe">
+                    <option value="15m">15 минут</option>
+                    <option value="1h">1 час</option>
+                    <option value="4h">4 часа</option>
+                    <option value="1d">1 день</option>
+                </select>
+                <input type="number" id="barLimit" value="50" min="1" max="1000" placeholder="Лимит">
+                <button onclick="loadBars()">Загрузить бары</button>
+            </div>
+            <div id="barsContainer"></div>
+        </div>
+        
+        <div class="section">
+            <h2>🔍 Дивергенции</h2>
+            <div class="controls">
+                <select id="divStatus">
+                    <option value="">Все статусы</option>
+                    <option value="active">Активные</option>
+                    <option value="confirmed">Подтвержденные</option>
+                    <option value="invalid">Недействительные</option>
+                </select>
+                <button onclick="loadDivergences()">Загрузить дивергенции</button>
+            </div>
+            <div id="divsContainer"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        
+        async function fetchAPI(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+        
+        async function loadStats() {
+            try {
+                const stats = await fetchAPI('/api/stats');
+                document.getElementById('metricsCount').textContent = stats.metrics.count;
+                document.getElementById('timeframesCount').textContent = stats.timeframes.count;
+                document.getElementById('totalBars').textContent = stats.bars.total_count.toLocaleString();
+                document.getElementById('activeDivs').textContent = stats.divergences.active_count;
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+        
+        async function loadForecast() {
+            const container = document.getElementById('forecastContainer');
+            const timeframe = document.getElementById('forecastTimeframe').value;
+            container.innerHTML = '<div class="loading">⏳ Загрузка прогноза...</div>';
+            
+            try {
+                const forecast = await fetchAPI(`/api/forecasts/btc?timeframe=${timeframe}&horizon=24`);
+                
+                const positiveClass = forecast.predicted_return >= 0 ? 'positive' : 'negative';
+                const returnPercent = (forecast.predicted_return * 100).toFixed(2);
+                
+                container.innerHTML = `
+                    <div class="forecast-card">
+                        <h3>Прогноз для BTC (${timeframe})</h3>
+                        <div class="forecast-info">
+                            <div class="forecast-item">
+                                <label>Текущая цена</label>
+                                <div class="value">$${forecast.current_price.toLocaleString(undefined, {maximumFractionDigits: 2})}</div>
+                            </div>
+                            ${forecast.predicted_price ? `
+                            <div class="forecast-item">
+                                <label>Прогнозируемая цена</label>
+                                <div class="value">$${forecast.predicted_price.toLocaleString(undefined, {maximumFractionDigits: 2})}</div>
+                            </div>
+                            ` : ''}
+                            ${forecast.predicted_return !== null ? `
+                            <div class="forecast-item">
+                                <label>Прогнозируемая доходность</label>
+                                <div class="value ${positiveClass}">${returnPercent > 0 ? '+' : ''}${returnPercent}%</div>
+                            </div>
+                            ` : ''}
+                            ${forecast.probability_up !== null ? `
+                            <div class="forecast-item">
+                                <label>Вероятность роста</label>
+                                <div class="value">${(forecast.probability_up * 100).toFixed(1)}%</div>
+                            </div>
+                            ` : ''}
+                            ${forecast.confidence !== null ? `
+                            <div class="forecast-item">
+                                <label>Уверенность</label>
+                                <div class="value">${(forecast.confidence * 100).toFixed(1)}%</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Ошибка загрузки прогноза: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadBars() {
+            const container = document.getElementById('barsContainer');
+            const metric = document.getElementById('barMetric').value;
+            const timeframe = document.getElementById('barTimeframe').value;
+            const limit = document.getElementById('barLimit').value || 50;
+            
+            container.innerHTML = '<div class="loading">⏳ Загрузка данных...</div>';
+            
+            try {
+                const bars = await fetchAPI(`/api/bars/${metric}/${timeframe}?limit=${limit}`);
+                
+                if (bars.length === 0) {
+                    container.innerHTML = '<div class="error">Нет данных для отображения</div>';
+                    return;
+                }
+                
+                let tableHTML = `
+                    <table class="bars-table">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Открытие</th>
+                                <th>Максимум</th>
+                                <th>Минимум</th>
+                                <th>Закрытие</th>
+                                ${bars[0].volume !== null ? '<th>Объем</th>' : ''}
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                bars.forEach(bar => {
+                    const date = new Date(bar.ts);
+                    const dateStr = date.toLocaleString('ru-RU');
+                    tableHTML += `
+                        <tr>
+                            <td>${dateStr}</td>
+                            <td>${bar.open.toFixed(2)}</td>
+                            <td>${bar.high.toFixed(2)}</td>
+                            <td>${bar.low.toFixed(2)}</td>
+                            <td>${bar.close.toFixed(2)}</td>
+                            ${bar.volume !== null ? `<td>${bar.volume.toLocaleString()}</td>` : ''}
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Ошибка загрузки баров: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadDivergences() {
+            const container = document.getElementById('divsContainer');
+            const status = document.getElementById('divStatus').value;
+            
+            container.innerHTML = '<div class="loading">⏳ Загрузка дивергенций...</div>';
+            
+            try {
+                let url = '/api/divergences?limit=50';
+                if (status) {
+                    url += `&status=${status}`;
+                }
+                const divs = await fetchAPI(url);
+                
+                if (divs.length === 0) {
+                    container.innerHTML = '<div class="error">Нет дивергенций для отображения</div>';
+                    return;
+                }
+                
+                let tableHTML = `
+                    <table class="bars-table">
+                        <thead>
+                            <tr>
+                                <th>Метрика</th>
+                                <th>Таймфрейм</th>
+                                <th>Индикатор</th>
+                                <th>Сторона</th>
+                                <th>Импликация</th>
+                                <th>Статус</th>
+                                <th>Оценка</th>
+                                <th>Время обнаружения</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                divs.forEach(div => {
+                    const date = new Date(div.detected_ts);
+                    const dateStr = date.toLocaleString('ru-RU');
+                    const implicationClass = div.implication.includes('bullish') ? 'positive' : 
+                                            div.implication.includes('bearish') ? 'negative' : '';
+                    
+                    tableHTML += `
+                        <tr>
+                            <td>${div.metric}</td>
+                            <td>${div.timeframe}</td>
+                            <td>${div.indicator}</td>
+                            <td>${div.side}</td>
+                            <td class="${implicationClass}">${div.implication}</td>
+                            <td>${div.status}</td>
+                            <td>${div.score.toFixed(2)}</td>
+                            <td>${dateStr}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
+            } catch (error) {
+                container.innerHTML = `<div class="error">Ошибка загрузки дивергенций: ${error.message}</div>`;
+            }
+        }
+        
+        // Инициализация
+        window.onload = function() {
+            loadStats();
+            setInterval(loadStats, 60000); // Обновляем статистику каждую минуту
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+

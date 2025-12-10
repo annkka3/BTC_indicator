@@ -1,0 +1,71 @@
+//@version=5
+indicator("Webhook Bars (JSON)", overlay=false)
+
+// ── Inputs ─────────────────────────────────────────────────────────────────────
+string secret       = input.string("CHANGE_ME_SECRET", "Webhook Secret")
+string metricAlias  = input.string("AUTO", "Metric Alias (AUTO/USDT.D/BTC.D/TOTAL2/TOTAL3/BTC/ETHBTC)")
+bool   debugLabels  = input.bool(false, "Show debug labels on chart?")
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+string _norm_tf(string tf) =>
+    tf == "15"   ? "15m" :
+    tf == "60"   ? "1h"  :
+    tf == "240"  ? "4h"  :
+    tf == "D" or tf == "1D" ? "1d" :
+    tf
+
+string _fmtf(float x) =>
+    // округляем до 8 знаков (достаточно для крипты/долларов)
+    str.tostring(x, format.percent)  // заглушка; ниже реальный формат
+string _fmt8(float x) =>
+    str.tostring(x, "#.################")  // до 16, но лишние не печатаются
+
+// ── Symbol / Metric mapping ────────────────────────────────────────────────────
+string tf_raw     = timeframe.period
+string tf_norm    = _norm_tf(tf_raw)
+string symbol_id  = syminfo.tickerid     // "EXCHANGE:SYMBOL"
+string symbol     = syminfo.ticker       // "SYMBOL" (короткий вид)
+
+// AUTO-маппинг метрики по тикеру
+string metric = metricAlias != "AUTO" ? metricAlias :
+     (symbol_id == "CRYPTOCAP:USDT.D" ? "USDT.D" :
+      symbol_id == "CRYPTOCAP:BTC.D"  ? "BTC.D"  :
+      symbol_id == "CRYPTOCAP:TOTAL2" ? "TOTAL2" :
+      symbol_id == "CRYPTOCAP:TOTAL3" ? "TOTAL3" :
+      symbol_id == "BINANCE:ETHBTC"   ? "ETHBTC" :
+      "BTC")
+
+// ── Payload ────────────────────────────────────────────────────────────────────
+int    ts_close   = time_close                   // unix ms close time (Pine v5)
+float  o_ = open, h_ = high, l_ = low, c_ = close
+float  v_ = volume
+
+// Преобразуем volume: если na, то JSON null (без кавычек)
+string v_json = na(v_) ? "null" : _fmt8(v_)
+
+// Формируем JSON. Обрати внимание: строки в кавычках, числа — нет.
+string fmt = (
+  "{"
+  + "\"secret\":\"%s\","
+  + "\"metric\":\"%s\","
+  + "\"symbol\":\"%s\","
+  + "\"timeframe\":\"%s\","
+  + "\"ts\":%s,"
+  + "\"o\":%s,\"h\":%s,\"l\":%s,\"c\":%s,"
+  + "\"v\":%s"
+  + "}"
+)
+string msg = str.format(
+  fmt,
+  secret,
+  metric,
+  symbol_id,
+  tf_norm,
+  str.tostring(ts_close),    // как число без кавычек
+  _fmt8(o_), _fmt8(h_), _fmt8(l_), _fmt8(c_),
+  v_json
+)
+
+// ── Debug label (optional) ─────────────────────────────────────────────────────
+if debugLabels
+    label.new(bar_index, close, text=msg, textcolor=color.white, style=label.style_label_left)
