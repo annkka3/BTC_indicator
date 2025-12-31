@@ -1,126 +1,34 @@
-# Архитектура проекта Alt Forecast Bot
+# Архитектура Alt Forecast Bot
 
-## Оглавление
-1. [Обзор архитектуры](#обзор-архитектуры)
-2. [Clean Architecture - слои](#clean-architecture---слои)
-3. [Структура проекта](#структура-проекта)
-4. [Паттерны проектирования](#паттерны-проектирования)
-5. [Потоки данных](#потоки-данных)
-6. [Компоненты системы](#компоненты-системы)
+Проект — сервис крипто-аналитики с двумя каналами выдачи:
 
----
+- **Telegram-бот** (интерактивные команды, кнопки, отчёты, изображения)
+- **HTTP API** (REST + простой веб-дашборд)
 
-## Обзор архитектуры
+Входные данные поступают из:
+- **TradingView webhook** (OHLC по выбранным метрикам и таймфреймам)
+- внешних API (CoinGecko / CoinGlass и др., если включены)
 
-Проект построен на принципах **Clean Architecture** (Чистой архитектуры), что обеспечивает:
-- Разделение ответственности между слоями
-- Независимость бизнес-логики от инфраструктуры
-- Легкость тестирования
-- Расширяемость и поддерживаемость
-
-### Основные принципы
-
-1. **Dependency Rule**: Внутренние слои не зависят от внешних
-2. **Single Responsibility**: Каждый класс отвечает за одну задачу
-3. **Dependency Injection**: Зависимости передаются через конструктор
-4. **Factory Pattern**: Использование фабрик для создания объектов
+Хранилище данных — **SQLite** в режиме WAL, используемое всеми сервисами через общий volume.
 
 ---
 
-## Clean Architecture - слои
+## Общая схема
 
-### Domain Layer (Доменный слой)
-**Расположение**: `app/domain/`
+TradingView webhook
+|
+v
+API (FastAPI) ---------> REST (/api/*) + UI (/)
+| |
+v v
+SQLite (WAL) <---------- чтение данных
+^
+|
+Worker (Telegram bot) ---> сообщения / графики / отчёты
+|
+v
+RabbitMQ (опционально: очередь задач и scaling worker-forecast)
 
-Содержит бизнес-логику и модели данных, не зависящие от внешних библиотек.
-
-**Компоненты**:
-- `models.py` - доменные модели
-- `services.py` - доменные сервисы
-- `divergence_detector.py` - логика определения дивергенций
-- `chart_settings.py` - настройки графиков
-
-**Характеристики**:
-- Не зависит от других слоев
-- Содержит чистую бизнес-логику
-- Легко тестируется
-
-### Application Layer (Слой приложения)
-**Расположение**: `app/application/`
-
-Содержит бизнес-логику приложения и use cases.
-
-**Компоненты**:
-- `services/` - сервисы приложения:
-  - `market_data_service.py` - работа с рыночными данными
-  - `bubbles_service.py` - генерация пузырьковых диаграмм
-  - `forecast_service.py` - ML прогнозы
-  - `twap_service.py` - расчет TWAP
-  - `traditional_markets_service.py` - традиционные рынки
-- `dto/` - Data Transfer Objects:
-  - `bubbles_dto.py` - DTO для пузырьков
-- `usecases/` - use cases:
-  - `analytics.py` - аналитика
-  - `generate_report.py` - генерация отчетов
-  - `ingest_bar.py` - обработка баров
-
-**Характеристики**:
-- Зависит только от Domain Layer
-- Содержит бизнес-логику приложения
-- Использует репозитории через интерфейсы
-
-### Presentation Layer (Слой представления)
-**Расположение**: `app/presentation/`
-
-Обрабатывает взаимодействие с пользователем (Telegram Bot).
-
-**Компоненты**:
-- `handlers/` - обработчики команд:
-  - `base_handler.py` - базовый класс для всех handlers
-  - `command_handler.py` - базовые команды (start, help, info)
-  - `bubbles_handler.py` - обработка пузырьков
-  - `chart_handler.py` - обработка графиков
-  - `forecast_handler.py` - обработка прогнозов
-  - `indices_handler.py` - обработка индексов (F&G, Altseason)
-  - `analytics_handler.py` - аналитика
-  - `handler_factory.py` - фабрика для создания handlers
-- `formatters/` - форматирование сообщений:
-  - `message_formatter.py` - форматирование текстовых сообщений
-- `integration/` - интеграция:
-  - `command_integrator.py` - интеграция команд
-
-**Характеристики**:
-- Зависит от Application Layer
-- Обрабатывает пользовательский ввод
-- Форматирует вывод для пользователя
-
-### Infrastructure Layer (Слой инфраструктуры)
-**Расположение**: `app/infrastructure/`
-
-Содержит реализацию внешних зависимостей.
-
-**Компоненты**:
-- `repositories/` - репозитории:
-  - `base_repository.py` - базовый класс
-  - `user_repository.py` - работа с пользователями
-  - `subscription_repository.py` - работа с подписками
-- `db.py` - работа с базой данных (SQLite)
-- `telegram_bot.py` - интеграция с Telegram Bot API
-- `coingecko.py` - работа с CoinGecko API
-- `coinglass.py` - работа с Coinglass API
-- `binance_options.py` - работа с Binance Options API
-- `cache.py` - кэширование
-- `ui_keyboards.py` - клавиатуры Telegram
-- `ui_router.py` - роутер для callback'ов
-
-**Характеристики**:
-- Зависит от всех других слоев
-- Реализует внешние интеграции
-- Содержит детали реализации
-
----
-
-## Структура проекта
 
 ```
 app/
@@ -188,288 +96,145 @@ app/
 └── main_api.py         # Точка входа (API)
 ```
 
+
 ---
 
-## Паттерны проектирования
+## Слои и ответственность
 
-### 1. Factory Pattern (Паттерн Фабрика)
-**Использование**: `HandlerFactory`
+### Domain (`app/domain/`)
+Содержит предметную модель и чистую бизнес-логику.
 
-Создает handlers и services с правильными зависимостями.
+Здесь находятся:
+- доменные сущности и типы (Bar, Metric, Timeframe, Divergence, MarketRegime и т.п.)
+- доменные сервисы и расчёты (например, детекторы дивергенций, логика режимов рынка)
 
-```python
-factory = HandlerFactory(db)
-handlers = factory.get_handlers()
-services = factory.get_services()
-```
+Здесь **нет**:
+- SQL
+- HTTP / Telegram
+- внешних API
+- логики запуска приложения
 
-### 2. Repository Pattern (Паттерн Репозиторий)
-**Использование**: `BaseRepository`, `UserRepository`, `SubscriptionRepository`
+---
 
-Абстрагирует работу с базой данных.
+### Application (`app/application/`)
+Оркестрирует сценарии использования системы.
 
-```python
-class UserRepository(BaseRepository):
-    def get_user_settings(self, user_id: int):
-        # Логика работы с БД
-        pass
-```
+Содержит:
+- use cases (`usecases/*`): ingest баров, генерация отчётов, аналитика
+- сервисы приложения (`services/*`): прогнозы, TWAP, пузырьковые диаграммы
+- DTO для передачи данных между слоями
 
-### 3. Handler Pattern (Паттерн Обработчик)
-**Использование**: `BaseHandler`, все handlers
+Зависит от Domain, но не содержит инфраструктурных деталей.
 
-Обрабатывает команды и callback'и от Telegram.
+---
 
-```python
-class BubblesHandler(BaseHandler):
-    async def handle_bubbles_command(self, update, context, tf="1h"):
-        # Обработка команды
-        pass
-```
+### Presentation (`app/presentation/`)
+Telegram-интерфейс.
 
-### 4. Service Pattern (Паттерн Сервис)
-**Использование**: Все services в `application/services/`
+Отвечает за:
+- обработку команд и callback-кнопок
+- вызов соответствующих use cases
+- форматирование ответа пользователю
 
-Содержит бизнес-логику приложения.
+Handlers не реализуют бизнес-логику — только маршрутизацию и UI.
 
-```python
-class BubblesService:
-    def generate_bubbles(self, timeframe: str) -> bytes:
-        # Генерация пузырьков
-        pass
-```
+---
 
-### 5. DTO Pattern (Паттерн Data Transfer Object)
-**Использование**: `BubblesDTO`, `BubblesSettingsDTO`
+### Infrastructure (`app/infrastructure/`)
+Реализация внешних зависимостей и технических деталей.
 
-Переносит данные между слоями.
+Содержит:
+- работу с SQLite и репозитории
+- Telegram Bot API
+- HTTP API (FastAPI), webhook, статический UI
+- клиенты внешних API
+- кеширование
 
-```python
-@dataclass
-class BubblesSettingsDTO:
-    timeframe: str
-    min_mcap: float
-    max_mcap: float
-```
+Infrastructure может зависеть от всех слоёв, остальные слои от него — нет.
 
-### 6. Command Pattern (Паттерн Команда)
-**Использование**: `CallbackRouter`, `CallbackCommand`
+---
 
-Инкапсулирует запросы как объекты.
+## Точки входа
 
-```python
-class CallbackCommand(ABC):
-    async def execute(self, update, context):
-        pass
-```
+- `app/main_api.py`  
+  Запуск FastAPI: webhook, REST API, веб-интерфейс.
+
+- `app/main_worker.py`  
+  Запуск Telegram-бота.
+
+- `worker-forecast` (опционально)  
+  Отдельный воркер для тяжёлых задач (через очередь).
 
 ---
 
 ## Потоки данных
 
-### 1. Обработка команды от пользователя
+### TradingView → база данных
+1. TradingView отправляет JSON на `POST /webhook`
+2. Webhook валидирует payload
+3. Use case `ingest_bar` преобразует данные в доменную модель Bar
+4. Бар сохраняется в SQLite
 
-```
-User → Telegram Bot → CommandHandler → Service → Repository → Database
-                                      ↓
-                                   Response ← Formatter ← Service
-```
-
-**Пример**: Команда `/bubbles`
-
-1. Пользователь отправляет `/bubbles 1h`
-2. `TelegramBot` получает команду
-3. `CommandIntegrator` направляет в `BubblesHandler`
-4. `BubblesHandler` вызывает `BubblesService`
-5. `BubblesService` получает данные через `MarketDataService`
-6. `BubblesService` генерирует изображение
-7. `BubblesHandler` отправляет изображение пользователю
-
-### 2. Обработка webhook от TradingView
-
-```
-TradingView → Webhook → API Handler → UseCase → Repository → Database
-```
-
-**Пример**: Получение данных OHLC
-
-1. TradingView отправляет webhook
-2. `main_api.py` получает запрос
-3. `ingest_bar` use case обрабатывает данные
-4. Данные сохраняются в БД через Repository
-
-### 3. Фоновые задачи (Job Queue)
-
-```
-Scheduler → Job → Service → Repository → Database
-                    ↓
-                 Telegram Bot → User
-```
-
-**Пример**: Ежечасная рассылка пузырьков
-
-1. `JobQueue` запускает задачу каждые 60 минут
-2. `hourly_bubbles` получает список подписчиков
-3. Для каждого подписчика вызывается `BubblesService`
-4. Изображение отправляется пользователю
+Инвариант: бар уникален по `(metric, timeframe, ts)`.
 
 ---
 
-## Компоненты системы
-
-### 1. Telegram Bot (`infrastructure/telegram_bot.py`)
-
-Основной класс для работы с Telegram Bot API.
-
-**Ответственность**:
-- Инициализация бота
-- Регистрация handlers
-- Обработка команд и callback'ов
-- Интеграция с новой архитектурой
-
-**Ключевые методы**:
-- `__init__()` - инициализация
-- `run()` - запуск бота
-- `on_start()` - обработка команды /start
-- `on_ui_btn()` - обработка callback'ов
-
-### 2. Handler Factory (`presentation/handlers/handler_factory.py`)
-
-Создает и инициализирует все handlers и services.
-
-**Ответственность**:
-- Создание services
-- Создание handlers
-- Управление зависимостями
-
-**Ключевые методы**:
-- `get_services()` - получение всех services
-- `get_handlers()` - получение всех handlers
-
-### 3. Command Integrator (`presentation/integration/command_integrator.py`)
-
-Интегрирует новую архитектуру со старым кодом.
-
-**Ответственность**:
-- Маршрутизация команд
-- Fallback на старый код
-- Постепенная миграция
-
-### 4. Database (`infrastructure/db.py`)
-
-Работа с SQLite базой данных.
-
-**Ответственность**:
-- Подключение к БД
-- Выполнение SQL запросов
-- Управление транзакциями
-
-### 5. Market Data Service (`application/services/market_data_service.py`)
-
-Работа с рыночными данными (CoinGecko).
-
-**Ответственность**:
-- Получение данных о криптовалютах
-- Кэширование данных
-- Форматирование данных
-
-### 6. Bubbles Service (`application/services/bubbles_service.py`)
-
-Генерация пузырьковых диаграмм.
-
-**Ответственность**:
-- Получение данных о криптовалютах
-- Генерация изображений
-- Фильтрация по параметрам
-
-### 7. Forecast Service (`application/services/forecast_service.py`)
-
-ML прогнозы для криптовалют.
-
-**Ответственность**:
-- Загрузка ML модели
-- Генерация прогнозов
-- Кэширование результатов
+### Telegram → аналитика → ответ
+1. Пользователь отправляет команду или нажимает кнопку
+2. Handler выбирает сценарий
+3. Use case обращается к доменной логике и БД
+4. Форматтер собирает текст или изображение
+5. Ответ отправляется пользователю
 
 ---
 
-## Зависимости между слоями
-
-```
-Presentation Layer
-    ↓ зависит от
-Application Layer
-    ↓ зависит от
-Domain Layer
-    ↑ зависит от
-Infrastructure Layer
-```
-
-**Правило**: Зависимости направлены внутрь. Внешние слои зависят от внутренних, но не наоборот.
+### REST / UI → чтение данных
+- Веб-интерфейс (`GET /`) обращается к `/api/*`
+- API читает данные из SQLite и сервисов аналитики
+- API не содержит бизнес-логики, только обёртки
 
 ---
 
-## Расширение проекта
+### Очереди и масштабирование (опционально)
+RabbitMQ используется для:
+- асинхронной обработки тяжёлых задач
+- запуска нескольких `worker-forecast` параллельно
 
-### Добавление новой команды
-
-1. Создать handler в `presentation/handlers/`
-2. Добавить метод в handler
-3. Зарегистрировать в `HandlerFactory`
-4. Добавить маршрутизацию в `CommandIntegrator`
-5. Зарегистрировать в `TelegramBot`
-
-### Добавление нового сервиса
-
-1. Создать service в `application/services/`
-2. Добавить в `HandlerFactory.get_services()`
-3. Использовать в handlers через dependency injection
-
-### Добавление нового репозитория
-
-1. Создать repository в `infrastructure/repositories/`
-2. Наследоваться от `BaseRepository`
-3. Использовать в services
+Базовый MVP не требует очередей и работает с одним воркером.
 
 ---
 
-## Тестирование
+## Используемые паттерны
 
-### Unit тесты
-
-Тестирование отдельных компонентов без зависимостей.
-
-**Примеры**:
-- Тестирование services без БД
-- Тестирование handlers с mock services
-- Тестирование domain логики
-
-### Integration тесты
-
-Тестирование взаимодействия между компонентами.
-
-**Примеры**:
-- Тестирование handlers с реальными services
-- Тестирование repositories с БД
-- Тестирование всего потока команды
+- **Repository** — изоляция доступа к SQLite
+- **Factory** — централизованная сборка handlers и services
+- **Use Case** — отдельные сценарии работы системы
+- **DTO** — передача данных между слоями без протекания инфраструктуры
 
 ---
 
-## Заключение
+## Архитектурные компромиссы
 
-Архитектура проекта следует принципам Clean Architecture, что обеспечивает:
-- Чистый и понятный код
-- Легкость тестирования
-- Расширяемость
-- Поддерживаемость
+1. **SQLite вместо Postgres**  
+   Выбран ради простоты запуска и минимальной инфраструктуры.  
+   Подходит для MVP и умеренной нагрузки.
 
-Для изучения проекта рекомендуется:
-1. Начать с `main_worker.py` - точка входа
-2. Изучить `HandlerFactory` - создание компонентов
-3. Изучить handlers - обработка команд
-4. Изучить services - бизнес-логика
-5. Изучить repositories - работа с БД
+2. **Два канала выдачи (Telegram + Web UI)**  
+   Удобно для демонстрации и отладки, требует строгого разделения логики.
 
+3. **Очереди как опция, а не обязательное условие**  
+   RabbitMQ подключается только при росте нагрузки.
+
+---
+
+## Рекомендуемый порядок изучения кода
+
+1. `main_api.py`, `infrastructure/webhook.py`
+2. `main_worker.py`
+3. `presentation/handlers/*`
+4. `application/usecases/*`
+5. `domain/*`
+6. `infrastructure/db.py`
 
 
 
