@@ -15,19 +15,41 @@
 
 ## Общая схема
 
-TradingView webhook
-|
-v
-API (FastAPI) ---------> REST (/api/*) + UI (/)
-| |
-v v
-SQLite (WAL) <---------- чтение данных
-^
-|
-Worker (Telegram bot) ---> сообщения / графики / отчёты
-|
-v
-RabbitMQ (опционально: очередь задач и scaling worker-forecast)
+                TradingView
+                   |
+                   |  (webhook)
+                   v
+             +--------------+
+             |   FastAPI    |
+             |     API      |
+             |              |
+             |  /webhook    |
+             |  /api/*      |
+             |  / (UI)      |
+             +------+-------+
+                    |
+                    |  write / read
+                    v
+             +--------------+
+             |   SQLite     |
+             |   (WAL)      |
+             +------+-------+
+                    ^
+                    |  read
+                    |
+             +------+-------+
+             |   Worker     |
+             |  Telegram    |
+             |     Bot      |
+             +------+-------+
+                    |
+                    |  async jobs (optional)
+                    v
+             +--------------+
+             |  RabbitMQ    |
+             | (task queue) |
+             +--------------+
+
 
 
 ```
